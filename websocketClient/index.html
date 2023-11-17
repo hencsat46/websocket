@@ -8,7 +8,19 @@
     <title>Document</title>
 </head>
 <body>
-    <input type="text">
-    <button onclick="sendMessage()">Отправить</button>
+    <div class="wrapper">
+        <div class="login-form">
+            <div class="login">
+                Логин <br>
+                <input type="text" class="uname">
+            </div>
+            <div class="password">
+                Пароль <br>
+                <input type="password" class="passw">
+            </div>
+            <button onclick="signIn()" class="sign-buttons">Войти</button>
+            <button onclick="signUp()" class="sign-buttons">Зарегистрироваться</button>
+        </div>
+    </div>
 </body>
 </html>
