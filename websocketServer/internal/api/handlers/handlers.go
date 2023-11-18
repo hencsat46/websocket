@@ -41,6 +41,8 @@ func Websocket(ctx echo.Context) error {
 			break
 		}
 
+		usecase.MessageDB(request.UserId, request.Message)
+
 		for i := 0; i < len(usersConnections); i++ {
 			if usersConnections[i] != ws {
 				if err := usersConnections[i].WriteJSON(request); err != nil {
@@ -54,6 +56,16 @@ func Websocket(ctx echo.Context) error {
 
 	return nil
 
+}
+
+func GetMessages(ctx echo.Context) error {
+	messagesArr, err := usecase.GetMessages()
+
+	if err != nil {
+		return ctx.JSON(http.StatusInternalServerError, &models.Response{Status: http.StatusInternalServerError, Payload: []models.Messages{{Message_id: 0, Message_text: "Internal Server Error", Message_owner: -1, Message_date: "0-0-0 0:0:0"}}})
+	}
+
+	return ctx.JSON(http.StatusOK, &models.Response{Status: http.StatusOK, Payload: messagesArr})
 }
 
 func SignUp(ctx echo.Context) error {

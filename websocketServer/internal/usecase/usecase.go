@@ -2,8 +2,8 @@ package usecase
 
 import (
 	"log"
-	"strconv"
 	"websocket/internal/database"
+	"websocket/internal/models"
 )
 
 func SingIn(username, password string) (int, error) {
@@ -27,18 +27,22 @@ func SignUp(username, password string) error {
 	return nil
 }
 
-func MessageDB(userId, message string) error {
-	userIdInt, err := strconv.Atoi(userId)
+func MessageDB(userId int, message string) error {
 
-	if err != nil {
-		log.Println(err)
-		return err
-	}
-
-	if err := database.WriteMessage(userIdInt, message); err != nil {
+	if err := database.WriteMessage(userId, message); err != nil {
 		log.Println(err)
 		return err
 	}
 
 	return nil
+}
+
+func GetMessages() ([]models.Messages, error) {
+	messagesArray, err := database.GetMessages()
+	if err != nil {
+		log.Println(err)
+		return nil, err
+	}
+
+	return messagesArray, nil
 }

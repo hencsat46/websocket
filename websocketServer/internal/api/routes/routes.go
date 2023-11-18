@@ -10,4 +10,5 @@ func CreateRoutes(e *echo.Echo) {
 	e.GET("/ws", handlers.Websocket)
 	e.POST("/signin", handlers.SignIn)
 	e.POST("/signup", handlers.SignUp)
+	e.GET("/getmessages", handlers.GetMessages)
 }

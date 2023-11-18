@@ -59,6 +59,23 @@ func checkRepeat(username string) (int, error) {
 	return int(userCount), nil
 }
 
+func GetMessages() ([]models.Messages, error) {
+
+	var recordsCount int64
+
+	if err := migrations.DB.Model(&models.Messages{}).Count(&recordsCount).Error; err != nil {
+		return nil, err
+	}
+
+	messagesArr := make([]models.Messages, recordsCount)
+
+	if err := migrations.DB.Order("message_date ASC").Find(&messagesArr).Error; err != nil {
+		return nil, err
+	}
+
+	return messagesArr, nil
+}
+
 func WriteMessage(userId int, message string) error {
 
 	currentDate := time.Now()
