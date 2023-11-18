@@ -1,0 +1,14 @@
+.wrapper {
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+.messages {
+    margin: 0 auto;
+    text-align: center;
+}
+
+.input-block {
+    margin: 0 auto;
+    text-align: center;
+}

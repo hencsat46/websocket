@@ -1,21 +1,5 @@
 
-// const url = "ws://localhost:3000/ws"
 
-// const ws = new WebSocket("ws://localhost:3000/ws")
-// console.log(ws.readyState)
-// ws.onopen = function() {
-//     console.log("Connected")
-// }
-
-// ws.onmessage = (event) => {
-//     console.log(event.data)
-// }
-
-// function sendMessage() {
-//     const message = document.querySelector("input").value
-//     console.log(message)
-//     ws.send(message)
-// }
 
 async function signIn() {
     const user = document.querySelector(".uname").value
@@ -34,9 +18,17 @@ async function signIn() {
         body: JSON.stringify(json)
     })
 
-    const response = await fetch(request)
+    const response = await (await fetch(request)).json()
 
-    console.log(await response.json())
+    if (response.Status == 200) {
+        localStorage.setItem("UserId", response.Payload)
+        window.location.href = "/chat";
+    }
+
+    
+
+
+    console.log(response)
 }
 
 async function signUp() {
@@ -48,8 +40,6 @@ async function signUp() {
         Password: password,
     }
 
-    
-
     const request = new Request("http://localhost:3000/signup", {
         method: "POST",
         mode: "no-cors",
@@ -58,5 +48,5 @@ async function signUp() {
 
     const response = await (await fetch(request)).json()
 
-    console.log(response)
+ 
 }

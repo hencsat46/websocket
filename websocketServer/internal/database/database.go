@@ -1,6 +1,8 @@
 package database
 
 import (
+	"fmt"
+	"time"
 	"websocket/internal/migrations"
 	"websocket/internal/models"
 	customerrors "websocket/internal/pkg/customErrors"
@@ -55,4 +57,23 @@ func checkRepeat(username string) (int, error) {
 	}
 
 	return int(userCount), nil
+}
+
+func WriteMessage(userId int, message string) error {
+
+	currentDate := time.Now()
+
+	formatTime := fmt.Sprintf("%d-%d-%d %d:%d:%d",
+		currentDate.Year(),
+		currentDate.Month(),
+		currentDate.Day(),
+		currentDate.Hour(),
+		currentDate.Minute(),
+		currentDate.Second())
+
+	if err := migrations.DB.Create(&models.Messages{Message_text: message, Message_date: formatTime, Message_owner: userId}).Error; err != nil {
+		return err
+	}
+
+	return nil
 }

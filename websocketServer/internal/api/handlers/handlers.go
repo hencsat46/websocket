@@ -17,29 +17,39 @@ var (
 	upgrader = websocket.Upgrader{CheckOrigin: func(r *http.Request) bool {
 		return true
 	}}
+
+	usersConnections = make([]*websocket.Conn, 0, 10)
 )
 
 func Websocket(ctx echo.Context) error {
+
 	ws, err := upgrader.Upgrade(ctx.Response(), ctx.Request(), nil)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
+
+	usersConnections = append(usersConnections, ws)
+
 	defer ws.Close()
 
 	for {
+		var request = MessageDTO{-1, ""}
 
-		_, message, err := ws.ReadMessage()
-
-		if err != nil {
+		if err := ws.ReadJSON(&request); err != nil {
 			log.Println(err)
 			break
 		}
 
-		if err := ws.WriteMessage(websocket.TextMessage, []byte(message)); err != nil {
-			log.Println(err)
+		for i := 0; i < len(usersConnections); i++ {
+			if usersConnections[i] != ws {
+				if err := usersConnections[i].WriteJSON(request); err != nil {
+					log.Println(err)
+				}
+			}
 		}
-		fmt.Printf("%s\n", message)
+
+		fmt.Printf("Sender: %d, Message: %s\n", request.UserId, request.Message)
 	}
 
 	return nil
