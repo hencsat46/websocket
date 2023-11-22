@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"websocket/internal/models"
@@ -18,45 +17,90 @@ var (
 		return true
 	}}
 
-	usersConnections = make([]*websocket.Conn, 0, 10)
+	connMap = make(map[*websocket.Conn]struct{})
+	//usersConnections = make([]*websocket.Conn, 0, 10)
 )
 
-func Websocket(ctx echo.Context) error {
+func reciever(ws *websocket.Conn, in chan<- models.MessageSender) {
+	for {
+		var request = MessageDTO{"", ""}
+		if err := ws.ReadJSON(&request); err != nil {
+			log.Println(err)
+			log.Println(request)
+			break
+		}
+		usecase.MessageDB(request.UserId, request.Message)
+		in <- models.MessageSender{Connection: ws, Message: request.Message}
+	}
+}
 
+func sender(out <-chan models.MessageSender) {
+
+	for i := range out {
+		for k, _ := range connMap {
+			if k != i.Connection.(*websocket.Conn) {
+				if err := k.WriteJSON(MessageDTO{UserId: "4", Message: i.Message}); err != nil {
+					log.Println(err)
+				}
+			}
+		}
+	}
+}
+
+func Websocket(ctx echo.Context) error {
 	ws, err := upgrader.Upgrade(ctx.Response(), ctx.Request(), nil)
 	if err != nil {
 		log.Println(err)
 		return err
 	}
+	//defer ws.Close()
 
-	usersConnections = append(usersConnections, ws)
+	connMap[ws] = struct{}{}
 
-	defer ws.Close()
-
-	for {
-		var request = MessageDTO{-1, ""}
-
-		if err := ws.ReadJSON(&request); err != nil {
-			log.Println(err)
-			break
-		}
-
-		usecase.MessageDB(request.UserId, request.Message)
-
-		for i := 0; i < len(usersConnections); i++ {
-			if usersConnections[i] != ws {
-				if err := usersConnections[i].WriteJSON(request); err != nil {
-					log.Println(err)
-				}
-			}
-		}
-
-		fmt.Printf("Sender: %d, Message: %s\n", request.UserId, request.Message)
-	}
+	data := make(chan models.MessageSender)
+	go reciever(ws, data)
+	go sender(data)
 
 	return nil
-
 }
+
+// func Websocket(ctx echo.Context) error {
+
+// 	ws, err := upgrader.Upgrade(ctx.Response(), ctx.Request(), nil)
+// 	if err != nil {
+// 		log.Println(err)
+// 		return err
+// 	}
+
+// 	usersConnections = append(usersConnections, ws)
+
+// 	defer ws.Close()
+
+// 	for {
+// 		var request = MessageDTO{"", ""}
+
+// 		if err := ws.ReadJSON(&request); err != nil {
+// 			log.Println(err)
+// 			log.Println(request)
+// 			break
+// 		}
+
+// 		usecase.MessageDB(request.UserId, request.Message)
+
+// 		for i := 0; i < len(usersConnections); i++ {
+// 			if usersConnections[i] != ws {
+// 				if err := usersConnections[i].WriteJSON(request); err != nil {
+// 					log.Println(err)
+// 				}
+// 			}
+// 		}
+
+// 		fmt.Printf("Sender: %s, Message: %s\n", request.UserId, request.Message)
+// 	}
+
+// 	return nil
+
+// }
 
 func GetMessages(ctx echo.Context) error {
 	messagesArr, err := usecase.GetMessages()

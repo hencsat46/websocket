@@ -16,8 +16,9 @@ async function getMessages() {
     })
 
     const response = await (await fetch(request)).json()
+    console.log(response)
     
-    if (response.Payload[0].Message_text != "Internal Server Error") {
+    if (response.Payload.length != 0 && response.Payload[0].Message_text != "Internal Server Error") {
         for (let i = 0; i < response.Payload.length; ++i) {
             drawMessage(response.Payload[i].Message_text)
         }
@@ -44,7 +45,14 @@ ws.onmessage = (event) => {
 function sendMessage() {
     const message = document.querySelector("input").value
 
-    ws.send(message)
+    const data = {
+        userId: localStorage.getItem("UserId"),
+        Message: message,
+    }
+
+    console.log(data)
+
+    ws.send(JSON.stringify(data))
 }
 
 

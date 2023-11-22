@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"log"
+	"strconv"
 	"websocket/internal/database"
 	"websocket/internal/models"
 )
@@ -27,9 +28,11 @@ func SignUp(username, password string) error {
 	return nil
 }
 
-func MessageDB(userId int, message string) error {
+func MessageDB(userId string, message string) error {
 
-	if err := database.WriteMessage(userId, message); err != nil {
+	userInt, _ := strconv.Atoi(userId)
+
+	if err := database.WriteMessage(userInt, message); err != nil {
 		log.Println(err)
 		return err
 	}

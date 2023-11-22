@@ -6,6 +6,6 @@ type SignDTO struct {
 }
 
 type MessageDTO struct {
-	UserId  int    `json:"userId"`
+	UserId  string `json:"userId"`
 	Message string `json:"message"`
 }

@@ -42,11 +42,15 @@ async function signUp() {
 
     const request = new Request("http://localhost:3000/signup", {
         method: "POST",
-        mode: "no-cors",
+        mode: "cors",
+        headers: {
+            "Content-Type": "application/json",
+        },
         body: JSON.stringify(data),
     })
 
     const response = await (await fetch(request)).json()
-
+    console.log(response)
  
 }
+
