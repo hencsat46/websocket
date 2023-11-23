@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"websocket/internal/models"
 	customerrors "websocket/internal/pkg/customErrors"
-	"websocket/internal/usecase"
 
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
@@ -21,7 +20,29 @@ var (
 	//usersConnections = make([]*websocket.Conn, 0, 10)
 )
 
-func reciever(ws *websocket.Conn, in chan<- models.MessageSender) {
+type handler struct {
+	usecase UsecaseInterfaces
+}
+
+type UsecaseInterfaces interface {
+	SignIn(string, string) (int, error)
+	SignUp(string, string) error
+	MessageDB(string, string) error
+	GetMessages() ([]models.Messages, error)
+}
+
+func NewHandler(usecase UsecaseInterfaces) *handler {
+	return &handler{usecase: usecase}
+}
+
+func (h *handler) CreateRoutes(e *echo.Echo) {
+	e.GET("/ws", h.Websocket)
+	e.POST("/signin", h.SignIn)
+	e.POST("/signup", h.SignUp)
+	e.GET("/getmessages", h.GetMessages)
+}
+
+func (h *handler) reciever(ws *websocket.Conn, in chan<- models.MessageSender) {
 	for {
 		var request = MessageDTO{"", ""}
 		if err := ws.ReadJSON(&request); err != nil {
@@ -29,15 +50,15 @@ func reciever(ws *websocket.Conn, in chan<- models.MessageSender) {
 			log.Println(request)
 			break
 		}
-		usecase.MessageDB(request.UserId, request.Message)
+		h.usecase.MessageDB(request.UserId, request.Message)
 		in <- models.MessageSender{Connection: ws, Message: request.Message}
 	}
 }
 
-func sender(out <-chan models.MessageSender) {
+func (h *handler) sender(out <-chan models.MessageSender) {
 
 	for i := range out {
-		for k, _ := range connMap {
+		for k := range connMap {
 			if k != i.Connection.(*websocket.Conn) {
 				if err := k.WriteJSON(MessageDTO{UserId: "4", Message: i.Message}); err != nil {
 					log.Println(err)
@@ -47,7 +68,7 @@ func sender(out <-chan models.MessageSender) {
 	}
 }
 
-func Websocket(ctx echo.Context) error {
+func (h *handler) Websocket(ctx echo.Context) error {
 	ws, err := upgrader.Upgrade(ctx.Response(), ctx.Request(), nil)
 	if err != nil {
 		log.Println(err)
@@ -58,8 +79,8 @@ func Websocket(ctx echo.Context) error {
 	connMap[ws] = struct{}{}
 
 	data := make(chan models.MessageSender)
-	go reciever(ws, data)
-	go sender(data)
+	go h.reciever(ws, data)
+	go h.sender(data)
 
 	return nil
 }
@@ -102,8 +123,8 @@ func Websocket(ctx echo.Context) error {
 
 // }
 
-func GetMessages(ctx echo.Context) error {
-	messagesArr, err := usecase.GetMessages()
+func (h *handler) GetMessages(ctx echo.Context) error {
+	messagesArr, err := h.usecase.GetMessages()
 
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, &models.Response{Status: http.StatusInternalServerError, Payload: []models.Messages{{Message_id: 0, Message_text: "Internal Server Error", Message_owner: -1, Message_date: "0-0-0 0:0:0"}}})
@@ -112,14 +133,14 @@ func GetMessages(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, &models.Response{Status: http.StatusOK, Payload: messagesArr})
 }
 
-func SignUp(ctx echo.Context) error {
+func (h *handler) SignUp(ctx echo.Context) error {
 	var request SignDTO = SignDTO{"", ""}
 
 	if err := ctx.Bind(&request); err != nil {
 		return ctx.JSON(http.StatusBadRequest, &models.Response{Status: http.StatusBadRequest, Payload: "Wrong json"})
 	}
 
-	if err := usecase.SignUp(request.Username, request.Password); err != nil {
+	if err := h.usecase.SignUp(request.Username, request.Password); err != nil {
 		if errors.Is(err, customerrors.ErrRepeat) {
 			return ctx.JSON(http.StatusBadRequest, &models.Response{Status: http.StatusBadRequest, Payload: "This user already exists"})
 		}
@@ -130,14 +151,14 @@ func SignUp(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, &models.Response{Status: http.StatusOK, Payload: "Sign Up ok"})
 }
 
-func SignIn(ctx echo.Context) error {
+func (h *handler) SignIn(ctx echo.Context) error {
 
 	var request SignDTO = SignDTO{"", ""}
 	if err := ctx.Bind(&request); err != nil {
 		return ctx.JSON(http.StatusBadRequest, &models.Response{Status: http.StatusBadRequest, Payload: "Wrong json"})
 	}
 
-	userId, err := usecase.SingIn(request.Username, request.Password)
+	userId, err := h.usecase.SignIn(request.Username, request.Password)
 
 	if err != nil {
 		if errors.Is(err, customerrors.ErrEmpty) {

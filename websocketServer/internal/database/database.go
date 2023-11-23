@@ -6,13 +6,29 @@ import (
 	"websocket/internal/migrations"
 	"websocket/internal/models"
 	customerrors "websocket/internal/pkg/customErrors"
+	"websocket/internal/usecase"
+
+	"gorm.io/gorm"
 )
 
-func SignIn(username, password string) (int, error) {
+type repository struct {
+	db *gorm.DB
+}
+
+func NewRepository() usecase.RepositoryInterfaces {
+	db, err := migrations.InitDB()
+	if err != nil {
+		return &repository{db: nil}
+	}
+
+	return &repository{db: db}
+}
+
+func (r *repository) SignIn(username, password string) (int, error) {
 
 	var user_id uint
 
-	count, err := checkRepeat(username)
+	count, err := checkRepeat(username, r.db)
 	if err != nil {
 		return -1, err
 	}
@@ -21,16 +37,16 @@ func SignIn(username, password string) (int, error) {
 		return -1, customerrors.ErrEmpty
 	}
 
-	if err := migrations.DB.Model(&models.Users{}).Select("user_id").Where("username = ? AND passwd = ?", username, password).Find(&user_id).Error; err != nil {
+	if err := r.db.Model(&models.Users{}).Select("user_id").Where("username = ? AND passwd = ?", username, password).Find(&user_id).Error; err != nil {
 		return -1, err
 	}
 
 	return int(user_id), nil
 }
 
-func SignUp(username, password string) error {
+func (r *repository) SignUp(username, password string) error {
 
-	count, err := checkRepeat(username)
+	count, err := checkRepeat(username, r.db)
 
 	if err != nil {
 		return err
@@ -40,7 +56,7 @@ func SignUp(username, password string) error {
 		return customerrors.ErrRepeat
 	}
 
-	if err = migrations.DB.Create(&models.Users{Username: username, Passwd: password}).Error; err != nil {
+	if err = r.db.Create(&models.Users{Username: username, Passwd: password}).Error; err != nil {
 		return err
 	}
 
@@ -48,35 +64,35 @@ func SignUp(username, password string) error {
 
 }
 
-func checkRepeat(username string) (int, error) {
+func checkRepeat(username string, db *gorm.DB) (int, error) {
 
 	var userCount int64
 
-	if err := migrations.DB.Model(&models.Users{}).Where("username = ?", username).Count(&userCount).Error; err != nil {
+	if err := db.Model(&models.Users{}).Where("username = ?", username).Count(&userCount).Error; err != nil {
 		return -1, err
 	}
 
 	return int(userCount), nil
 }
 
-func GetMessages() ([]models.Messages, error) {
+func (r *repository) GetMessages() ([]models.Messages, error) {
 
 	var recordsCount int64
 
-	if err := migrations.DB.Model(&models.Messages{}).Count(&recordsCount).Error; err != nil {
+	if err := r.db.Model(&models.Messages{}).Count(&recordsCount).Error; err != nil {
 		return nil, err
 	}
 
 	messagesArr := make([]models.Messages, recordsCount)
 
-	if err := migrations.DB.Order("message_date ASC").Find(&messagesArr).Error; err != nil {
+	if err := r.db.Order("message_date ASC").Find(&messagesArr).Error; err != nil {
 		return nil, err
 	}
 
 	return messagesArr, nil
 }
 
-func WriteMessage(userId int, message string) error {
+func (r *repository) WriteMessage(userId int, message string) error {
 
 	currentDate := time.Now()
 
@@ -88,7 +104,7 @@ func WriteMessage(userId int, message string) error {
 		currentDate.Minute(),
 		currentDate.Second())
 
-	if err := migrations.DB.Create(&models.Messages{Message_text: message, Message_date: formatTime, Message_owner: userId}).Error; err != nil {
+	if err := r.db.Create(&models.Messages{Message_text: message, Message_date: formatTime, Message_owner: userId}).Error; err != nil {
 		return err
 	}
 

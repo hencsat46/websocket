@@ -3,13 +3,28 @@ package usecase
 import (
 	"log"
 	"strconv"
-	"websocket/internal/database"
+	"websocket/internal/api/handlers"
 	"websocket/internal/models"
 )
 
-func SingIn(username, password string) (int, error) {
+type usecase struct {
+	repo RepositoryInterfaces
+}
 
-	userId, err := database.SignIn(username, password)
+type RepositoryInterfaces interface {
+	SignIn(string, string) (int, error)
+	SignUp(string, string) error
+	GetMessages() ([]models.Messages, error)
+	WriteMessage(int, string) error
+}
+
+func NewUsecase(repo RepositoryInterfaces) handlers.UsecaseInterfaces {
+	return &usecase{repo: repo}
+}
+
+func (u *usecase) SignIn(username, password string) (int, error) {
+
+	userId, err := u.repo.SignIn(username, password)
 	log.Println(userId)
 	if err != nil {
 		log.Println(err)
@@ -18,9 +33,9 @@ func SingIn(username, password string) (int, error) {
 
 }
 
-func SignUp(username, password string) error {
+func (u *usecase) SignUp(username, password string) error {
 
-	if err := database.SignUp(username, password); err != nil {
+	if err := u.repo.SignUp(username, password); err != nil {
 		log.Println(err)
 		return err
 	}
@@ -28,11 +43,11 @@ func SignUp(username, password string) error {
 	return nil
 }
 
-func MessageDB(userId string, message string) error {
+func (u *usecase) MessageDB(userId string, message string) error {
 
 	userInt, _ := strconv.Atoi(userId)
 
-	if err := database.WriteMessage(userInt, message); err != nil {
+	if err := u.repo.WriteMessage(userInt, message); err != nil {
 		log.Println(err)
 		return err
 	}
@@ -40,8 +55,8 @@ func MessageDB(userId string, message string) error {
 	return nil
 }
 
-func GetMessages() ([]models.Messages, error) {
-	messagesArray, err := database.GetMessages()
+func (u *usecase) GetMessages() ([]models.Messages, error) {
+	messagesArray, err := u.repo.GetMessages()
 	if err != nil {
 		log.Println(err)
 		return nil, err
